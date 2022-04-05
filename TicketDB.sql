@@ -1,0 +1,170 @@
+CREATE DATABASE TicketDB
+GO
+
+USE TicketDB
+GO
+
+CREATE TABLE dbo.Usuario(
+	Id BIGINT IDENTITY(1,1) NOT NULL,
+	Codigo VARCHAR(8) NOT NULL,
+	Nome VARCHAR(128) NOT NULL,
+	Login VARCHAR(20) NULL,
+	Senha VARCHAR(30) NULL
+ CONSTRAINT PK_Usuarios PRIMARY KEY CLUSTERED 
+(
+	Id ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+CREATE TABLE dbo.Cliente(
+	Id BIGINT IDENTITY(1,1) NOT NULL,
+	Codigo VARCHAR(16) NOT NULL,
+	CPF VARCHAR(11) NOT NULL	
+ CONSTRAINT PK_Cliente PRIMARY KEY CLUSTERED 
+(
+	Id ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] 
+GO
+
+CREATE TABLE dbo.TicketSituacao(
+	Id SMALLINT IDENTITY(1,1) NOT NULL,
+	Nome VARCHAR(64) NOT NULL
+ CONSTRAINT PK_TicketSituacao PRIMARY KEY CLUSTERED 
+(
+	Id ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] 
+GO
+
+CREATE TABLE dbo.Ticket(
+	Id BIGINT IDENTITY(1,1) NOT NULL,
+	IdUsuarioAbertura BIGINT NOT NULL,
+	IdUsuarioConclusao BIGINT NULL,
+	IdCliente BIGINT NOT NULL,
+	IdTicketSituacao SMALLINT NOT NULL,
+	Codigo INT NOT NULL,
+	DataAbertura DATETIME NOT NULL CONSTRAINT DF_Ticket_DataAbertura DEFAULT (GETDATE()),
+	DataConclusao DATETIME NULL,
+ CONSTRAINT PK_Ticket PRIMARY KEY CLUSTERED 
+(
+	Id ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] 
+GO
+
+ALTER TABLE dbo.Ticket  WITH CHECK ADD CONSTRAINT FK_Ticket_IdUsuarioAbertura_Usuario_Id FOREIGN KEY(IdUsuarioAbertura) REFERENCES dbo.Usuario (Id)
+GO
+ALTER TABLE dbo.Ticket CHECK CONSTRAINT FK_Ticket_IdUsuarioAbertura_Usuario_Id
+GO
+
+ALTER TABLE dbo.Ticket  WITH CHECK ADD CONSTRAINT FK_Ticket_IdUsuarioConclusao_Usuario_Id FOREIGN KEY(IdUsuarioConclusao) REFERENCES dbo.Usuario (Id)
+GO
+ALTER TABLE dbo.Ticket CHECK CONSTRAINT FK_Ticket_IdUsuarioConclusao_Usuario_Id
+GO
+
+ALTER TABLE dbo.Ticket  WITH CHECK ADD CONSTRAINT FK_Ticket_IdCliente_Cliente_Id FOREIGN KEY(IdCliente) REFERENCES dbo.Cliente (Id)
+GO
+ALTER TABLE dbo.Ticket CHECK CONSTRAINT FK_Ticket_IdCliente_Cliente_Id
+GO
+
+ALTER TABLE dbo.Ticket  WITH CHECK ADD CONSTRAINT FK_Ticket_IdTicketSituacao_TicketSituacao_Id FOREIGN KEY(IdTicketSituacao) REFERENCES dbo.TicketSituacao (Id)
+GO
+ALTER TABLE dbo.Ticket CHECK CONSTRAINT FK_Ticket_IdTicketSituacao_TicketSituacao_Id
+GO
+
+CREATE TABLE dbo.TicketAnotacao(
+	Id BIGINT IDENTITY(1,1) NOT NULL,
+	IdTicket BIGINT NOT NULL,
+	IdUsuario BIGINT NOT NULL,
+	Texto VARCHAR(512) NOT NULL,
+	DataCadastro DATETIME NOT NULL CONSTRAINT DF_Ticket_DataCadastro DEFAULT (GETDATE()),
+ CONSTRAINT PK_TicketAnotacao PRIMARY KEY CLUSTERED 
+(
+	Id ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] 
+GO
+
+ALTER TABLE dbo.TicketAnotacao  WITH CHECK ADD CONSTRAINT FK_TicketAnotacao_IdTicket_Ticket_Id FOREIGN KEY(IdTicket) REFERENCES dbo.Ticket(Id)
+GO
+ALTER TABLE dbo.TicketAnotacao CHECK CONSTRAINT FK_TicketAnotacao_IdTicket_Ticket_Id
+GO
+
+ALTER TABLE dbo.TicketAnotacao  WITH CHECK ADD CONSTRAINT FK_TicketAnotacao_IdUsuario_Usuario_Id FOREIGN KEY(IdUsuario) REFERENCES dbo.Usuario(Id)
+GO
+ALTER TABLE dbo.TicketAnotacao CHECK CONSTRAINT FK_TicketAnotacao_IdUsuario_Usuario_Id
+GO
+
+CREATE SEQUENCE [dbo].[SQ_UsuarioCodigo]
+    AS [Int]
+    START WITH 1000
+    INCREMENT BY 1
+    MINVALUE 1000
+    MAXVALUE 999999999
+    CACHE
+    --CYCLE --UTILIZAR CYCLE APENAS SE PERMITIDO REINICIAR A SEQUENCIA
+GO
+
+CREATE SEQUENCE [dbo].[SQ_ClienteCodigo]
+    AS [BIGINT]
+    START WITH 1000
+    INCREMENT BY 1
+    MINVALUE 1000
+    MAXVALUE 999999999999
+    CACHE
+    --CYCLE --UTILIZAR CYCLE APENAS SE PERMITIDO REINICIAR A SEQUENCIA
+GO
+
+CREATE SEQUENCE [dbo].[SQ_TicketCodigo]
+    AS [BIGINT]
+    START WITH 1000
+    INCREMENT BY 1
+    MINVALUE 1000
+    MAXVALUE 999999999999
+    CACHE
+    --CYCLE --UTILIZAR CYCLE APENAS SE PERMITIDO REINICIAR A SEQUENCIA
+GO
+
+CREATE VIEW [dbo].[VW_TicketDetalhes]
+AS
+SELECT 
+	t1.Id, 
+	t1.IdUsuarioAbertura,
+	t3.Codigo AS CodigoUsuarioAbertura, 
+	t3.Nome AS NomeUsuarioAbertura,
+	t1.IdUsuarioConclusao,
+	t4.Codigo AS CodigoUsuarioConclusao, 
+	t4.Nome AS NomeUsuarioConclusao,
+	t1.IdCliente,
+	t2.Codigo AS CodigoCliente,
+	t2.CPF AS CpfCliente, 	
+	t1.IdTicketSituacao,
+	t5.Nome AS SituacaoTicket,
+	t1.Codigo AS CodigoTicket,
+	t1.DataAbertura,
+	t1.DataConclusao,
+	(SELECT COUNT(0) FROM TicketAnotacao WHERE IdTicket = t1.Id) AS QuantidadeAnotacoes
+FROM
+	Ticket AS t1 
+	INNER JOIN Cliente AS t2 ON t2.Id = t1.IdCliente
+	INNER JOIN Usuario AS t3 ON t3.Id = t1.IdUsuarioAbertura
+	LEFT JOIN Usuario AS t4 ON t4.Id = t1.IdUsuarioConclusao
+	INNER JOIN TicketSituacao AS t5 ON t5.Id = t1.IdTicketSituacao
+
+--SELECT * FROM Usuario
+--SELECT * FROM Cliente
+--SELECT * FROM TicketSituacao
+--SELECT * FROM Ticket
+--SELECT * FROM TicketAnotacao
+
+--DROP TABLE TicketAnotacao
+--GO
+--DROP TABLE Usuario
+--GO
+--DROP TABLE Cliente
+--GO
+--DROP TABLE TicketSituacao
+--GO
+--DROP TABLE Ticket
